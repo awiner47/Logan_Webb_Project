@@ -1,0 +1,397 @@
+# %%
+#Abe Winer
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+
+# %%
+#Question 1: Is Logan Webb throwing a different pitch mix in 2023?
+#Skills used: Time series analysis requiring rolling average and groupby
+#Merges 2 dataframes
+#Uses data from Baseball Savant (All of Logan Webb's pitches from 2022 and 2023)
+
+webb_df_23 = pd.read_csv('logan_webb_all_pitches_2023.csv')
+webb_df_22 = pd.read_csv('logan_webb_all_pitches_2022.csv')
+webb_df_21 = pd.read_csv('logan_webb_all_pitches_2021.csv')
+
+webb_df_22['game_date'] = webb_df_22.game_date.apply(pd.to_datetime)
+
+#pitch_mix vs. lefties 2022
+webb_df_22_game_index_L = webb_df_22[webb_df_22.stand=='L'].set_index('game_date')
+resampled_df_L = webb_df_22_game_index_L.resample('1D').count()
+L_df = webb_df_22[webb_df_22.stand=='L'].groupby(['game_date', 'pitch_type']).count()
+L_df = L_df[L_df['description']>0]
+L_df = L_df.reset_index()
+merged_df_L = pd.merge(L_df, resampled_df_L, on='game_date', how='inner')
+merged_df_L
+merged_df_L = merged_df_L[['game_date', 'pitch_type_x', 'description_x', 'pitch_type_y']]
+merged_df_L['percentage'] = merged_df_L['description_x']/merged_df_L['pitch_type_y']
+graph_df_L = merged_df_L.groupby('pitch_type_x').resample('1D', on='game_date').max()
+graph_df_L = graph_df_L.rename(columns = {'pitch_type_x': 'pitch_type'})
+graph_df_L['10drolling'] = graph_df_L.groupby('pitch_type')['percentage'].rolling(10).mean().reset_index(0, drop=True)
+graph_df_L = graph_df_L[graph_df_L['description_x']>0]
+
+#pitch_mix vs. righties 2022
+webb_df_22_game_index_R = webb_df_22[webb_df_22.stand=='R'].set_index('game_date')
+resampled_df_R = webb_df_22_game_index_R.resample('1D').count()
+R_df = webb_df_22[webb_df_22.stand=='R'].groupby(['game_date', 'pitch_type']).count()
+R_df = R_df[R_df['description']>0]
+R_df = R_df.reset_index()
+merged_df_R = pd.merge(R_df, resampled_df_R, on='game_date', how='inner')
+merged_df_R
+merged_df_R = merged_df_R[['game_date', 'pitch_type_x', 'description_x', 'pitch_type_y']]
+merged_df_R['percentage'] = merged_df_R['description_x']/merged_df_R['pitch_type_y']
+graph_df_R = merged_df_R.groupby('pitch_type_x').resample('1D', on='game_date').max()
+graph_df_R = graph_df_R.rename(columns = {'pitch_type_x': 'pitch_type'})
+graph_df_R['10drolling'] = graph_df_R.groupby('pitch_type')['percentage'].rolling(10).mean().reset_index(0, drop=True)
+graph_df_R = graph_df_R[graph_df_R['description_x']>0]
+
+# %%
+webb_df_23['game_date'] = webb_df_23.game_date.apply(pd.to_datetime)
+
+
+#pitch_mix vs. lefties 2023
+webb_df_23_game_index1L = webb_df_23[webb_df_23.stand=='L'].set_index('game_date')
+resampled_df1L = webb_df_23_game_index1L.resample('1D').count()
+test_df1L = webb_df_23[webb_df_23.stand=='L'].groupby(['game_date', 'pitch_type']).count()
+test_df1L = test_df1L[test_df1L['description']>0]
+test_df1L = test_df1L.reset_index()
+merged_df1L = pd.merge(test_df1L, resampled_df1L, on='game_date', how='inner')
+merged_df1L = merged_df1L[['game_date', 'pitch_type_x', 'description_x', 'pitch_type_y']]
+merged_df1L['percentage'] = merged_df1L['description_x']/merged_df1L['pitch_type_y']
+graph_df1L = merged_df1L.groupby('pitch_type_x').resample('1D', on='game_date').max()
+graph_df1L = graph_df1L.rename(columns = {'pitch_type_x': 'pitch_type'})
+graph_df1L = graph_df1L[graph_df1L['description_x']>0]
+
+#pitch_mix vs. righties 2023
+webb_df_23_game_index1R = webb_df_23[webb_df_23.stand=='R'].set_index('game_date')
+resampled_df1R = webb_df_23_game_index1R.resample('1D').count()
+test_df1R = webb_df_23[webb_df_23.stand=='R'].groupby(['game_date', 'pitch_type']).count()
+test_df1R = test_df1R[test_df1R['description']>0]
+test_df1R = test_df1R.reset_index()
+merged_df1R = pd.merge(test_df1R, resampled_df1R, on='game_date', how='inner')
+merged_df1R = merged_df1R[['game_date', 'pitch_type_x', 'description_x', 'pitch_type_y']]
+merged_df1R['percentage'] = merged_df1R['description_x']/merged_df1R['pitch_type_y']
+graph_df1R = merged_df1R.groupby('pitch_type_x').resample('1D', on='game_date').max()
+graph_df1R = graph_df1R.rename(columns = {'pitch_type_x': 'pitch_type'})
+graph_df1R = graph_df1R[graph_df1R['description_x']>0]
+
+# %%
+fig, (ax1, ax2) = plt.subplots(ncols=2, sharey=True,figsize=(15, 10),gridspec_kw={'width_ratios': [6, 2]})
+sns.lineplot(data=graph_df_L, x = 'game_date', y = '10drolling', hue = 'pitch_type_x', ax = ax1)
+sns.lineplot(data=graph_df1L, x = 'game_date', y = 'percentage', hue = 'pitch_type_x', ax = ax2, legend=False)
+plt.subplots_adjust(wspace=0.05)
+plt.xticks(rotation=45)
+ax1.legend(loc='upper left')
+ax2.legend(loc='upper left')
+ax1.set(xlabel='Date', ylabel='Pitch as Percentage of Arsenal', title='Logan Webb 2022 Pitch Mix vs. LHH')
+ax2.set(xlabel='Date', ylabel='Pitch as Percentage of Arsenal', title='Logan Webb 2023 Pitch Mix vs. LHH')
+plt.savefig('webb_mix_L.png', dpi=300, bbox_inches='tight')
+
+# %%
+fig, (ax1, ax2) = plt.subplots(ncols=2, sharey=True,figsize=(15, 10),gridspec_kw={'width_ratios': [6, 2]})
+sns.lineplot(data=graph_df_R, x = 'game_date', y = '10drolling', hue = 'pitch_type_x', ax = ax1)
+sns.lineplot(data=graph_df1R, x = 'game_date', y = 'percentage', hue = 'pitch_type_x', ax = ax2, legend = False)
+plt.subplots_adjust(wspace=0.05)
+plt.xticks(rotation=45)
+ax1.legend(loc='upper left')
+ax2.legend(loc='upper left')
+ax1.set(xlabel='Date', ylabel='Pitch as Percentage of Arsenal', title='Logan Webb 2022 Pitch Mix vs. RHH')
+ax2.set(xlabel='Date', ylabel='Pitch as Percentage of Arsenal', title='Logan Webb 2023 Pitch Mix vs. RHH')
+plt.savefig('webb_mix_R.png', dpi=300, bbox_inches='tight')
+
+# %%
+# We established in question 1 that Logan Webb is throwing a different pitch mix. How are the batters faring
+# against these pitches compared to 2022?
+
+def diff_mean(stat):
+    stat_22 = webb_df_22.groupby('pitch_type')[stat].mean()
+    stat_23 = webb_df_23.groupby('pitch_type')[stat].mean()
+    return stat_23-stat_22
+
+
+change_df = pd.DataFrame({'woba_diff':diff_mean('woba_value'), 'xwoba_diff': diff_mean('estimated_woba_using_speedangle'),
+                          'xBA_diff': diff_mean('estimated_ba_using_speedangle'), 'iso_diff': diff_mean('iso_value'),
+                         'horiz_break_diff': diff_mean('pfx_x'), 'vert_break_diff': diff_mean('pfx_z'), 
+                         'velo_diff': diff_mean('release_speed')})
+change_df
+
+# %% [markdown]
+# We see that  the sinker, changeup, and slider are all performing worse in 2023 than 2022 across on base stats as well as power statistics. What about pitch characteristics? All 3 are getting less horiz. movement which could be the culprit. But he's throwing every pitch faster. If the pitch characteristics aren't to blame, could it be location?
+
+# %%
+#Question 2: Is Logan Webb locating his pitches differently so far in 2023? 
+#Combines 2 dataframes (concatenation)
+#Uses same data as question 1
+
+webb_total_df = pd.concat([webb_df_22, webb_df_23])
+webb_total_df['year'] = webb_total_df['game_date'].apply(lambda x: x.year)
+webb_total_df.head()
+
+fig, axes = plt.subplots(ncols=2, nrows = 3, sharey=True, sharex = True, figsize=(15, 18))
+sns.kdeplot(data = webb_total_df[(webb_total_df['pitch_type']=='SI')&(webb_total_df['stand']=='L')], x = 'plate_x', y = 'plate_z', hue = 'year', ax = axes[0,0])
+sns.kdeplot(data = webb_total_df[(webb_total_df['pitch_type']=='SI')&(webb_total_df['stand']=='R')], x = 'plate_x', y = 'plate_z', hue = 'year', ax = axes[0,1])
+sns.kdeplot(data = webb_total_df[(webb_total_df['pitch_type']=='CH')&(webb_total_df['stand']=='L')], x = 'plate_x', y = 'plate_z', hue = 'year', ax = axes[1,0])
+sns.kdeplot(data = webb_total_df[(webb_total_df['pitch_type']=='CH')&(webb_total_df['stand']=='R')], x = 'plate_x', y = 'plate_z', hue = 'year', ax = axes[1,1])
+sns.kdeplot(data = webb_total_df[(webb_total_df['pitch_type']=='SL')&(webb_total_df['stand']=='L')], x = 'plate_x', y = 'plate_z', hue = 'year', ax = axes[2,0])
+sns.kdeplot(data = webb_total_df[(webb_total_df['pitch_type']=='SL')&(webb_total_df['stand']=='R')], x = 'plate_x', y = 'plate_z', hue = 'year', ax = axes[2,1])
+
+axes[0,0].set(title='Sinker vs. LHH')
+axes[0,1].set(title='Sinker vs. RHH')
+axes[1,0].set(title='Changeup vs. LHH')
+axes[1,1].set(title='Changeup vs. RHH')
+axes[2,0].set(title='Slider vs. LHH')
+axes[2,1].set(title='Slider vs. RHH')
+plt.savefig('webb_locations.png', dpi=300, bbox_inches='tight')
+
+
+
+# %% [markdown]
+# From these density graphs, it appears that he is locating both his sinker and changeup more heavily towards the glove side. From our pitch mix graph above, we can see that against both LHH and RHH he is utilizing the sinker more often. Let's dive more into the sinker because it is undoubtedly Webb's signature pitch. 
+
+# %%
+a = [1,4,7]
+b = [3, 6, 9]
+
+arm_side_df = webb_df_22[webb_df_22['zone'].isin(a)]
+glove_side_df = webb_df_22[webb_df_22['zone'].isin(b)]
+a = arm_side_df.groupby('pitch_type').pfx_x.median()
+b = glove_side_df.groupby('pitch_type').pfx_x.median()
+a,b
+
+# %% [markdown]
+# This math shows that the sinkers get more horizontal movement on average when thrown to the arm side
+
+# %%
+#Question 3: How does Logan Webb's sinker play in different parts of the zone?
+#Uses same data as question 1
+
+L = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+webb_df_21_22 = pd.concat([webb_df_21, webb_df_22])
+zone_df = webb_df_21_22[(webb_df_21_22.zone.isin(L)) & (webb_df_21_22['stand']=='R')]
+woba_df = zone_df.groupby(['pitch_type','zone']).woba_value.mean()
+sinker_df = woba_df.reset_index()
+sinker_df = sinker_df[sinker_df.pitch_type=='SI']
+
+map_d1 = {1: 'A', 2: 'B', 3: 'C', 4: 'A', 5: 'B', 6: 'C', 7: 'A', 8: 'B', 9: 'C'}
+map_d2 = {1: 'X', 2: 'X', 3: 'X', 4: 'Y', 5: 'Y', 6:'Y', 7:'Z', 8: 'Z', 9: 'Z'}
+
+sinker_df['x_var'] = sinker_df['zone'].map(map_d1)
+sinker_df['y_var'] = sinker_df['zone'].map(map_d2)
+sinker_df = sinker_df.fillna(0)
+graph_df = pd.pivot_table(data = sinker_df, index = 'y_var', columns = 'x_var', values = 'woba_value')
+f, ax = plt.subplots(figsize=(6, 6))
+color_map = sns.color_palette("RdYlGn", as_cmap=True)
+sns.heatmap(graph_df, annot=True, cmap=color_map)
+plt.title('2021/2022 wOBA vs. RHH')
+
+# %%
+L = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+zone_df = webb_df_23[(webb_df_23.zone.isin(L)) & (webb_df_23['stand']=='R')]
+woba_df = zone_df.groupby(['pitch_type','zone']).woba_value.mean()
+sinker_df = woba_df.reset_index()
+sinker_df = sinker_df[sinker_df.pitch_type=='SI']
+
+map_d1 = {1: 'A', 2: 'B', 3: 'C', 4: 'A', 5: 'B', 6: 'C', 7: 'A', 8: 'B', 9: 'C'}
+map_d2 = {1: 'X', 2: 'X', 3: 'X', 4: 'Y', 5: 'Y', 6:'Y', 7:'Z', 8: 'Z', 9: 'Z'}
+
+sinker_df['x_var'] = sinker_df['zone'].map(map_d1)
+sinker_df['y_var'] = sinker_df['zone'].map(map_d2)
+sinker_df = sinker_df.fillna(0)
+graph_df = pd.pivot_table(data = sinker_df, index = 'y_var', columns = 'x_var', values = 'woba_value')
+f, ax = plt.subplots(figsize=(6, 6))
+color_map = sns.color_palette("RdYlGn", as_cmap=True)
+sns.heatmap(graph_df, annot=True, cmap=color_map)
+plt.title('2023 wOBA vs. RHH')
+
+# %%
+L = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+webb_df_21_22 = pd.concat([webb_df_21, webb_df_22])
+zone_df = webb_df_21_22[(webb_df_21_22.zone.isin(L)) & (webb_df_21_22['stand']=='R')]
+woba_df = zone_df.groupby(['pitch_type','zone']).estimated_woba_using_speedangle.mean()
+sinker_df = woba_df.reset_index()
+sinker_df = sinker_df[sinker_df.pitch_type=='SI']
+
+map_d1 = {1: 'A', 2: 'B', 3: 'C', 4: 'A', 5: 'B', 6: 'C', 7: 'A', 8: 'B', 9: 'C'}
+map_d2 = {1: 'X', 2: 'X', 3: 'X', 4: 'Y', 5: 'Y', 6:'Y', 7:'Z', 8: 'Z', 9: 'Z'}
+
+sinker_df['x_var'] = sinker_df['zone'].map(map_d1)
+sinker_df['y_var'] = sinker_df['zone'].map(map_d2)
+sinker_df = sinker_df.fillna(0)
+graph_df = pd.pivot_table(data = sinker_df, index = 'y_var', columns = 'x_var', values = 'estimated_woba_using_speedangle')
+f, ax = plt.subplots(figsize=(6, 6))
+color_map = sns.color_palette("RdYlGn", as_cmap=True)
+sns.heatmap(graph_df, annot=True, cmap=color_map)
+plt.title('2021/2022 xwOBA vs. RHH')
+
+# %%
+L = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+zone_df = webb_df_23[(webb_df_23.zone.isin(L)) & (webb_df_23['stand']=='R')]
+woba_df = zone_df.groupby(['pitch_type','zone']).estimated_woba_using_speedangle.mean()
+sinker_df = woba_df.reset_index()
+sinker_df = sinker_df[sinker_df.pitch_type=='SI']
+
+map_d1 = {1: 'A', 2: 'B', 3: 'C', 4: 'A', 5: 'B', 6: 'C', 7: 'A', 8: 'B', 9: 'C'}
+map_d2 = {1: 'X', 2: 'X', 3: 'X', 4: 'Y', 5: 'Y', 6:'Y', 7:'Z', 8: 'Z', 9: 'Z'}
+
+sinker_df['x_var'] = sinker_df['zone'].map(map_d1)
+sinker_df['y_var'] = sinker_df['zone'].map(map_d2)
+sinker_df = sinker_df.fillna(0)
+graph_df = pd.pivot_table(data = sinker_df, index = 'y_var', columns = 'x_var', values = 'estimated_woba_using_speedangle')
+f, ax = plt.subplots(figsize=(6, 6))
+color_map = sns.color_palette("RdYlGn", as_cmap=True)
+sns.heatmap(graph_df, annot=True, cmap=color_map)
+plt.title('2023 xwOBA vs. RHH')
+
+# %%
+#Question 4: Should the Tigers have moved their fence in?
+#Uses baseball savant data from Comerica Park 2019-2022
+
+def home_run(col):
+    if col=='home_run':
+        return 1
+    return 0
+
+tigers_df_old = pd.read_csv('comerica.csv')
+tigers_df_21 = pd.read_csv('comerica_21.csv')
+tigers_df_19 = pd.read_csv('comerica_19.csv')
+tigers_df = pd.concat([tigers_df_old, tigers_df_21, tigers_df_19])
+tigers_df
+tigers_df['is_home_run'] = tigers_df['events'].apply(home_run)
+conversion = 422/-175
+tigers_df['distance_in_feet'] = tigers_df['hc_y'].apply(lambda x: x*conversion)
+tigers_df['hc_y_neg'] = tigers_df['hc_y'].apply(lambda x: x*-1)
+new_fence_dist = 10/conversion
+new_fence_dist
+small_df = tigers_df[(tigers_df['hc_x']>95)&(tigers_df['hc_x']<160)&(tigers_df['hc_y_neg']>-25+new_fence_dist)]
+
+new_hr_df = small_df[small_df.is_home_run==0].reset_index()
+def is_tigers(col):
+    if col=='Bot':
+        return 1
+    return 0
+new_hr_df['is_tigers'] = new_hr_df['inning_topbot'].apply(is_tigers)
+print(new_hr_df.groupby('is_tigers').batter.count())
+print(new_hr_df.groupby('is_tigers').delta_run_exp.sum())
+ax = sns.scatterplot(data = small_df, x = 'hc_x', y = 'hc_y_neg', hue = 'is_home_run')
+plt.axhline(y=-25, color='r', linestyle='--')
+ax.set_xlim(0, 250)
+ax.set_title('Center Field Home Runs')
+
+# %%
+ax = sns.scatterplot(data = tigers_df, x = 'hc_x', y = 'hc_y_neg', hue = 'is_home_run')
+ax.set_title('Home Runs at Comerica Park 2019-2022')
+
+# %%
+#Question 5: Is Riley Greene in for a sophomore breakout or sophomore slump?
+#Uses data from Baseball Savant, Riley Greene's 2022/2023 at-bats
+greene_df = pd.read_csv('riley_greene.csv')
+L = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+swing_L = ['foul', 'foul_tip', 'hit_into_play', 'swinging_strike', 'swinging_strike_blocked']
+
+def o_zone(col):
+    if col not in L:
+        return 1
+    return 0
+
+def swing(col):
+    if col in swing_L:
+        return 1
+    return float('nan')
+
+greene_df['o_zone'] = greene_df['zone'].apply(o_zone)
+greene_df['game_date'] = greene_df['game_date'].apply(pd.to_datetime)
+greene_df['year'] = greene_df['game_date'].apply(lambda x: x.year)
+greene_df['swing'] = greene_df['description'].apply(swing)
+
+greene_woba_df = greene_df[greene_df.year==2022]
+greene_woba_df = greene_woba_df.groupby('game_date').mean()
+greene_woba_df['rolling_10_x'] = greene_woba_df['estimated_woba_using_speedangle'].rolling(10).mean()
+greene_woba_df['rolling_10'] = greene_woba_df['woba_value'].rolling(10).mean()
+plt.figure(figsize=(12, 6))
+
+greene_ozone_22 = greene_df[(greene_df.o_zone==1)&(greene_df.year==2022)]
+count_df = greene_ozone_22.groupby('game_date').count()
+count_df['percentage_swing'] = count_df['swing']/count_df['o_zone']
+count_df['rolling_10'] = count_df['percentage_swing'].rolling(10).mean()
+
+sns.set_style('darkgrid')
+sns.lineplot(data = greene_woba_df, x = 'game_date', y = 'rolling_10', label = 'wOBA')
+# sns.lineplot(data = greene_woba_df, x = 'game_date', y = 'rolling_10_x', label = 'xwOBA')
+sns.lineplot(data = count_df, x = 'game_date', y = 'rolling_10', label = 'O-Swing%')
+plt.legend()
+plt.gca().set(ylim=(0, None))
+plt.xlabel('Game Date')
+plt.ylabel('10 Day Rolling Average')
+plt.title('Riley Greene wOBA vs. O-Swing%')
+plt.savefig('riley_greene.png', dpi=300, bbox_inches='tight')
+
+# %%
+strikeout_L = ['strikeout', 'strikeout_double_play']
+
+greene_22_df = greene_df[greene_df.year==2022]
+greene_23_df = greene_df[greene_df.year==2023]
+
+bb_rate_22 = greene_22_df[greene_22_df['events']=='walk'].events.count()/greene_22_df.events.count()*100
+bb_rate_23 = greene_23_df[greene_23_df['events']=='walk'].events.count()/greene_23_df.events.count()*100
+
+k_rate_22 = greene_22_df[greene_22_df['events'].isin(strikeout_L)].events.count()/greene_22_df.events.count()*100
+k_rate_23 = greene_23_df[greene_23_df['events'].isin(strikeout_L)].events.count()/greene_23_df.events.count()*100
+
+greene_woba_22 = greene_22_df.woba_value.mean()
+greene_woba_23 = greene_23_df.woba_value.mean()
+
+greene_oswing_23 = greene_23_df[greene_23_df['o_zone']==1].groupby('game_date').count()
+greene_oswing_23['percentage_swing'] = greene_oswing_23['swing']/greene_oswing_23['o_zone']
+
+greene_oswing_22 = count_df['percentage_swing'].mean()*100
+greene_oswing_23 = greene_oswing_23.percentage_swing.mean()*100
+
+output_df = pd.DataFrame({'2022': [greene_oswing_22, greene_woba_22, bb_rate_22, k_rate_22], 
+                          '2023': [greene_oswing_23, greene_woba_23, bb_rate_23, k_rate_23], 
+                          'Statistic': ['O-Swing%', 'wOBA', 'BB%', 'K%']})
+output_df = output_df.set_index('Statistic')
+output_df.loc[output_df.index != 'wOBA'] = output_df.loc[output_df.index != 'wOBA'].apply(lambda x: round(x, 2)).astype(str)
+output_df
+
+# %%
+# Question 6: What batted ball profiles can predict a home run?
+# Skills Used: Logistic regression analysis involving more than 5 independent variables
+# Uses baseball savant data from the Rogers Centre 2015-2022
+
+blue_jays_22_df = pd.read_csv('blue_jays_data_22.csv')
+blue_jays_19_df = pd.read_csv('blue_jays_data_19.csv')
+blue_jays_18_df = pd.read_csv('blue_jays_data_18.csv')
+blue_jays_17_df = pd.read_csv('blue_jays_data_17.csv')
+blue_jays_16_df = pd.read_csv('blue_jays_data_16.csv')
+blue_jays_15_df = pd.read_csv('blue_jays_data_15.csv')
+
+total_df = pd.concat([blue_jays_22_df, blue_jays_19_df,blue_jays_18_df,blue_jays_17_df,blue_jays_16_df,blue_jays_15_df])
+
+d = {1:'Weak', 2:'Topped', 3: 'Under', 4: 'Flare', 5: 'Solid Contact', 6: 'Barrel'}
+total_df['launch_speed_angle'] = total_df['launch_speed_angle'].map(d)
+total_df['is_home_run'] = total_df['events'].apply(home_run)
+total_df['launch_speed_angle'] = total_df['launch_speed_angle'].fillna('N/A')
+
+model = smf.logit('is_home_run ~ launch_speed + release_speed+launch_angle+release_spin_rate+C(zone)+stand', data=total_df).fit()
+model.summary()
+
+# %%
+#Question 7: What parts of a football game contributes to the excitement index?
+#Skills Used: Linear regression analysis involving 5 independent variables
+
+michigan_df = pd.read_csv('michigan_football_stats.csv')
+
+# %%
+michigan_df['point_diff'] = abs(michigan_df['home_points']-michigan_df['away_points'])
+michigan_df['elo_diff'] = abs(michigan_df['away_pregame_elo']-michigan_df['home_pregame_elo'])
+
+# %%
+model = smf.ols('excitement_index~point_diff+home_turnovers+home_sacks+home_totalFumbles+elo_diff',data = michigan_df).fit()
+
+# %%
+model.summary()
+
+
